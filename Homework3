@@ -1,77 +1,252 @@
-#Shadi Taha
-#2/18/2019
-#CS3910 Spring 2019
-
 import pandas as pd
-import sqlite3
 
-print('Starting...')
+# Homework 3
+# Chase Eddie, Danielle Santucci, Shadi Taha
 
-# Reads the csv file and places into a Dataframe
-dirty_csv = str(input("Input the name of the first CSV you want cleaned (Include .csv): "))
-print('Dirty CSV name: '+dirty_csv)
-df = pd.read_csv(dirty_csv) #reads dirty CSV into Dataframe
+# this is our import statement where we state the path, and file name for where we are pulling our data
+marriage = pd.read_excel('state-marriage-rates-90-95-99-17.xlsx',
+                          skiprows=4,           # skip the first 4 rows metadata
+                          header=[0,1],         # header now takes the fist and second rows
+                          skipfooter=7,         # skips the last 7 lines of metadata
+                          na_values='---',      # in the original file, all "empty" cells are filled with a
+                                                # "---" so this will recognize those as null
+                          usecols=51,           # identifies our original data set as 51 columns
+                          index_col=[0, 1])     # these are our columns
 
-#Reshapes from Wide to Long format
-df = pd.melt(df, id_vars=['State'])
+# this will eliminate all rows within the file that are blank values
+marriage.dropna(how='all', inplace=True)   # inplace=True so that these values are updated and not copied
 
-#Renames the Column names
-df.columns = ['State','Type','Rate']
+# this will be our pivot statement for our columns to rows, also resetting our index to the 1st and 2nd col
+marriage = marriage.stack([0,1]).reset_index()
 
-#Splits the "2011 Divorce" into "Year" and "Event" columns
-df['Year'], df['Event'] = df['Type'].str.split(' ', 1).str
+# here is we rename the titles of our columns
+marriage.rename(columns={marriage.columns[0] : 'States',
+                          marriage.columns[1] : 'Drop1', # i kept getting these extra columns that I did not want
+                          marriage.columns[2] : 'Drop2', # so i gave them names to make it easier to drop them
+                          marriage.columns[3] : 'Years',
+                          marriage.columns[4] : 'Marriage Rates'},
+                 inplace=True) # avoid copies
 
-#Drops the original un-split column
-df = df.drop(['Type'], axis=1)
+# here is where we will drop those extra columns that hold irrelevant data
+marriage = marriage.drop('Drop1', 1)  # the 1 tells python that these are column names not rows
+marriage = marriage.drop('Drop2', 1)
 
-#Gets the column names and places into a list
-cols = df.columns.tolist()
+# this will round all float values to the nearest tenth so the data set is uniform throughout
+marriage = marriage.round(decimals=1)
 
-#Re-order the list of columns to preferred order
-reorderColumn = cols[:1] + cols[2:] + cols[1:2]
+# now our export statement to write the new format to a new excel file
+marriage.to_excel(excel_writer='MarriageClean.xlsx',
+                   sheet_name='Marriage',
+                   na_rep='null',
+                   index=False)
 
-#Applies the column ordering to the dataframe
-df = df[reorderColumn]
+#####################
+### Divorce Rates ###
+#####################
 
-print('Successfully processed DataFrame from Wide to Long')
-print('')
 
-##### Create the new cleaned CSV File #####
+divorceRates=pd.read_excel('state-divorce-rates-90-95-99-17.xlsx', #Reads assignment
+                           skiprows=5, #skip the first 5 rows
+                           
+                           index_col=0, #Columns 
+                           skipfooter=0, #skip ending metadata
+                           
+                           na_values='---' #values that display --- are null values
+                          
+)
 
-#Ask user for the new CSV name they want.
-new_csv_name = str(input("Enter a name for the new CSV (Include .csv): "))
-print('CSV NAME: '+new_csv_name)
-df.to_csv(new_csv_name, index=False)  #Creates the CSV
-print('Created the CSV successfully.')
 
-##### DATABASE #####
+divorceRates.dropna(how='all', inplace=True)   
+ #drop rows that have null values but modifies original object rather than returning a copy
+divorceRates=divorceRates.stack(dropna=False) #stacks labels and put index into cols and adds dropna false to return empty values as null
 
-# Ask user for name of Database they want.
-db_name = str(input("Enter a name for the new Database (Include .db): "))
-print('Database name: '+db_name)
 
-#Connection to database and create a cursor
-conn = sqlite3.connect(db_name)
-cur = conn.cursor()
+divorceRates.index.names=['State', 'Year'] #Displays index names state and year and places data
+divorceRates.name="Divorce Rates" #Displays column 2 as divorce rates
 
-#Ask user for a table name, and creates it.
-new_table_name = str(input("Enter a name for the table: "))
-print('Table name: '+new_table_name)
-df.to_sql(new_table_name, conn, if_exists='replace', index=False) #Dataframe -> SQL
-print('Dataframe to SQL successful.')
 
-#Shows the user everything in the database
-print('Here are all the SQL rows below...')
-#Creates the query to show all rows
-show_all_script = str("select * from %s;") % new_table_name
-#Executes the query
-cur.execute(show_all_script)
-#Fetches the results and displays them
-results = cur.fetchall()
-print(results)
 
-print('All done, Thanks!')
+divorceRates.to_excel(excel_writer='DivorceClean.xlsx', #Makes new excel file called divorce rates clean
+                      sheet_name='divorceRates', #names the sheet name divorceRates
+                      na_rep='null',
+                                      #n/a data is declared as null
+                      )
 
-#Commits and closes the connection
-conn.commit()
-conn.close()
+############################
+#### Unemployment Rates ####
+############################
+
+# this is our import statement where we state the path, and file name for where we are pulling our data
+unemp = pd.read_excel('Unemployment rate by state 2000-2017.xlsx',
+                          skiprows=6,           # skip the first 4 rows metadata
+                                  
+                          skipfooter=0,         # skips the last 7 lines of metadata
+                          na_values='N/A',      # in the original file, all "empty" cells are filled with a
+                                                # "---" so this will recognize those as null
+                          usecols=936           # identifies our original data set as 51 columns
+                          )     # these are our columns
+
+# this will eliminate all rows within the file that are blank values
+unemp.dropna(how='all', inplace=True)   # inplace=True so that these values are updated and not copied
+
+# here is we rename the titles of our columns
+unemp.rename(columns={unemp.columns[0] : 'Drop1',
+                      unemp.columns[1] : 'Location', # i kept getting these extra columns that I did not want
+                      unemp.columns[2] : 'Year', # so i gave them names to make it easier to drop them
+                      unemp.columns[3] : 'Drop2',
+                      unemp.columns[4] : 'Rate',
+                      unemp.columns[5] : 'Drop null'},
+                      inplace=True) # avoid copies
+
+# here is where we will drop those extra columns that hold irrelevant data
+unemp = unemp.drop('Drop1', 1)  # the 1 tells python that these are column names not rows
+unemp = unemp.drop('Drop2', 1)
+unemp = unemp.drop('Drop null', 1)
+
+
+# now our export statement to write the new format to a new excel file
+unemp.to_excel(excel_writer='UnemploymentClean.xlsx',
+                   sheet_name='Unemployment Rate',
+                   na_rep='null',
+                   index=False)
+
+##############################
+##### Health Coverage ########
+##############################
+
+# this is our import statement where we state the path, and file name for where we are pulling our data
+unemp = pd.read_excel('Health Insurance Coverage Type by Family Income and Age 2008-2017.xlsx',
+                          skiprows=6,           # skip the first 4 rows metadata
+                                  
+                          skipfooter=0,         # skips the last 7 lines of metadata
+                          na_values=' ',      # in the original file, all "empty" cells are filled with a
+                                                # "---" so this will recognize those as null
+                                   # identifies our original data set as 51 columns
+                          )     # these are our columns
+
+# this will eliminate all rows within the file that are blank values
+unemp.dropna(how='all', inplace=True)   # inplace=True so that these values are updated and not copied
+
+# here is we rename the titles of our columns
+unemp.rename(columns={unemp.columns[0] : 'Drop1',
+                      unemp.columns[1] : 'Location', # i kept getting these extra columns that I did not want
+                      unemp.columns[2] : 'Coverage', # so i gave them names to make it easier to drop them
+                      unemp.columns[3] : 'Family Income',
+                      unemp.columns[4] : 'Age Range',
+                      unemp.columns[5] : 'Year',
+                      unemp.columns[5] : 'Date Type',
+                      unemp.columns[6] : 'Data',
+                      unemp.columns[7] : 'MOE'},
+                      inplace=True) # avoid copies
+
+# here is where we will drop those extra columns that hold irrelevant data
+unemp = unemp.drop('Drop1', 1)  # the 1 tells python that these are column names not rows
+
+# now our export statement to write the new format to a new excel file
+unemp.to_excel(excel_writer='Health Insurance Clean.xlsx',
+                   sheet_name='Health Insurance',
+                   na_rep='null',
+                   index=False)
+
+###########################
+####### Crime Stats #######
+###########################
+
+crime=pd.read_excel('CrimeTrendsInOneVar.xlsx', # read file and read variables
+                           skiprows=4, 
+                                       
+                       skipfooter=15,                   
+                       na_values= "null",
+                      usecols=1,
+                       header=[0],
+                       index_col = 0)       
+#crime.rename(columns={crime.columns[1]: 'Total Crimes'}, inplace=True)
+
+
+crime.dropna(how='all', inplace=True) # dropping our nulls
+
+crime= crime.reset_index()
+           
+
+crime.to_excel(excel_writer='crime_clean.xlsx',      # here is our output     
+                sheet_name='crime',                            
+                 
+index=False
+                                
+                ) 
+
+########################
+### Household Income ###
+########################
+
+#storing our variables
+sr = 3
+head = [0, 1, 2]
+sf = 1
+ic = 0
+na = 'null'
+
+data = pd.read_excel('Household income Dirty.xls',  #reading dirty file
+                       skiprows=sr,
+                       header=head,
+                       na_values=na,    #inputting variables
+                       skipfooter=sf,
+                       index_col=ic
+                       )
+
+data.dropna(how='all', inplace=True)
+data = data.stack(head)             # switching format
+data = data.reset_index()
+data.rename(columns={data.columns[0]: 'State',
+                     data.columns[1]: 'Currency',
+                     data.columns[2]: 'Year',       
+                     data.columns[3]: 'Median Income/Standard Error',
+                     data.columns[4]: 'USD$'},
+            inplace=True)
+# renamed columns
+
+# our iterations through the rows 
+for i, row in data.iterrows():
+    data.at[i, 'Year'] = str(data.at[i, 'Year']).split('(')[0] #splitting ''(''
+    
+data = data.drop('Currency', 1)    
+new_csv_name = 'Household income Clean.csv'
+data.to_csv(new_csv_name, index=False)  #Creates the CSV
+
+#######################
+###### Migration ######
+#######################
+
+mi=pd.read_excel('tab-a-1.xlsx', 
+                         skiprows=6, 
+                       skipfooter=12,                   # our read statement
+                       na_values = "",
+                       header=[0],
+                       index_col = [0,1,2,3,4,5,6,7,8]) 
+# this one has a few more columns
+
+mi.dropna(how='all', inplace=True) 
+mi = mi.stack().reset_index() # setting our new index
+           
+mi.rename(columns={mi.columns[0]: 'Mobility Period',
+                   mi.columns[1]: 'Total, 1 year old and over',
+                   mi.columns[2]: 'Same residence',
+                   mi.columns[3]: 'Total movers',
+                   mi.columns[4]: 'Different residence total',
+                   mi.columns[5]: 'Different residence same county',
+                   mi.columns[6]: 'Different county total',
+                   mi.columns[7]: 'Different county same state',
+                   mi.columns[8]: 'Different county different state',
+                   mi.columns[9]: 'Drop5',
+                   mi.columns[10]: 'Movers from abroad'
+                   }, inplace=True)
+# all columns named
+    
+mi = mi.drop('Drop5', 1)          # drop unneeded                             
+mi = mi.round(decimals=1)       # round function
+mi.to_excel(excel_writer='migration_clean.xlsx',           
+                sheet_name='migration',     # now we export                
+index=False
+                )
+
+# fin
