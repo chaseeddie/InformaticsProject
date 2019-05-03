@@ -1,0 +1,125 @@
+import warnings
+warnings.filterwarnings('ignore')
+import pandas as pd
+from pandas import plotting as plt
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plot
+import numpy as np
+from sklearn import preprocessing as pp
+from sklearn.linear_model import LinearRegression
+from sklearn import linear_model
+from sklearn.model_selection import train_test_split, cross_val_score, cross_val_predict
+from sklearn import metrics
+
+# import csv to create our regression model with
+analysis = pd.read_csv('HealthInsuranceClean.csv', na_values='null')
+
+# import csv as a separate variable to be used once we make our predictions
+regression = pd.read_csv('HealthInsuranceClean.csv', na_values='null')
+
+#analysis.fillna(method='bfill', inplace=True)
+
+print("Original: \n", analysis.head())
+plt.scatter_matrix(analysis)
+
+# store our columns holding our data
+columns = ['Percent', 'MOE', 'Number']
+
+# create our dummy variables
+location = pd.get_dummies(analysis['Location'])
+coverageType = pd.get_dummies(analysis['Coverage Type'])
+familyIncome = pd.get_dummies(analysis['Family Income'])
+age = pd.get_dummies(analysis['Age'])
+
+# merge all of our separate dataframes into one
+analysis = analysis.merge(location, left_index=True, right_index=True)
+analysis = analysis.merge(coverageType, left_index=True, right_index=True)
+analysis = analysis.merge(familyIncome, left_index=True, right_index=True)
+analysis = analysis.merge(age, left_index=True, right_index=True)
+
+# drop our columns that we have created dummy variables for
+analysis.drop(['Fips', 'Location', 'Coverage Type', 'Family Income', 'Age'], axis=1, inplace=True)
+
+# print values before scaling
+print('\nBefore Scaling:\n', analysis.head())
+
+scale = pp.MinMaxScaler() # create our scale
+
+# feature scaling for better analysis
+analysis[columns] = scale.fit_transform(analysis[columns])  #scaling values
+
+# print values after scaling
+print('\nScaled:\n', analysis.head())
+
+#analysis[columns] = scale.inverse_transform(analysis[columns])
+
+# drop null rows
+analysis = analysis.dropna(how='any')
+no_null = analysis.dropna(how='any')
+
+# need n-1 records for regression so we drop our last one
+x = no_null.drop(['United States', 'Uninsured', '$75,000 or more', '19-25', 'MOE', 'Number'], axis=1)
+
+# set our y for percent
+y = no_null['Percent']
+
+# split the data into 80% train and 20% test
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+# fit  model and set it based on training data
+new_model = linear_model.LinearRegression()
+lm_test = new_model.fit(x_train, y_train)
+
+''' R2 = percent of variance of y explained by model '''
+#r2 = lm_test.score(x_test, y_test)
+#print('\nHold Out R2:', round(r2, 4))
+
+# Get RMSE (average difference of predicted vs. actual in Y units) from predictions & actual values (y)
+#rmse = np.sqrt(metrics.mean_squared_error(y_test, pred))  # RMSE is the square root of MSE
+#print('Hold Out RMSE:', round(rmse, 4))
+
+pred_percent = cross_val_predict(new_model, analysis, y, cv=6)
+
+x = no_null.drop(['United States', 'Uninsured', '$75,000 or more', '19-25', 'Percent', 'Number'], axis=1)
+y = no_null['MOE']
+
+# split the data into 80% train and 20% test
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+new_model = linear_model.LinearRegression()
+lm_test = new_model.fit(x_train, y_train)
+
+pred_moe = cross_val_predict(new_model, analysis, y, cv=6)
+x = no_null.drop(['United States', 'Uninsured', '$75,000 or more', '19-25', 'Percent', 'MOE'], axis=1)
+y = no_null['Number']
+
+x_train, x_test, y_train, y_test = train_test_split(analysis, y, test_size=0.2)
+
+new_model = linear_model.LinearRegression()
+lm_test = new_model.fit(x_train, y_train)
+
+pred_number = cross_val_predict(new_model, analysis, y, cv=6)
+
+# convert these to dataframes and rename them so we can fill the null
+# values with them
+pred_percent = pd.DataFrame(data=pred_percent.flatten())
+pred_percent.columns = ['Percent']
+
+pred_moe = pd.DataFrame(data=pred_moe.flatten())
+pred_moe.columns = ['MOE']
+
+pred_number = pd.DataFrame(data=pred_number.flatten())
+pred_number.columns = ['Number']
+
+# now add all of our predicted values to the original csv
+# fill the null values with our predicted values from the regression model
+regression.Percent = regression.Percent.fillna(value=pred_percent.Percent)
+regression.MOE = regression.MOE.fillna(value=pred_moe.MOE)
+regression.Number = regression.Number = regression.Number.fillna(method='bfill')
+
+# drop this column in our new csv because it is useless
+regression = regression.drop(['Fips'], axis=1)
+# export to new CSV
+regression.to_csv('HealthInsuranceRegression.csv', index=None, header=True)
+print('\nComplete\n')
