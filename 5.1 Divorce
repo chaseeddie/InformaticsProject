@@ -1,0 +1,176 @@
+
+import pandas as pd
+
+pd.options.mode.chained_assignment = None   
+analysis = pd.read_csv('DivorceClean.csv',
+                       header=0,                      # header is now in the first row
+                       na_values='Null',              # na values are "null" in excel
+                       index_col=None)
+  
+
+null_list = analysis.index[analysis.isnull().any(axis=1) == True].tolist()
+
+def print_org_missing(df, name):
+   #print first 5 null values
+    print("\n" + name + ":\n", df.iloc[null_list].head(),  '\n')
+
+
+print_org_missing(analysis, "Original Null Values")
+
+# look at the means: group by year
+print(analysis.groupby(['Year']).mean())
+
+# fill the null values
+
+filled = analysis.groupby(['Year']).transform('mean')
+
+# print the length of the original data frame and the filled values dataframe
+print("\nOur Data frame length: ", len(analysis), "\nFilled Values Dataframe Length ", len(filled))
+
+#  print filled values dataframe
+print("\nValues to fill with:\n", filled.head())
+
+# print original dataframe values
+print("\nOriginal Values:\n", analysis.head())
+
+
+#Fill holes
+final = analysis.fillna(analysis.groupby(['Year']).transform('mean'))
+
+# print filled null values
+print_org_missing(final, "Filled by Year Mean Null Values")
+
+
+
+
+# get a new dataframe with only values for Colorado to use to fill na values in original
+co_fixna = analysis.loc[analysis['State'] == 'Colorado' ]
+
+
+# use backfill to populate na values in the new dataframe 
+co_fixna.fillna(method='bfill', inplace=True)
+
+# use the new dataframe to fill na values in the original 
+analysis = analysis.fillna(co_fixna)
+
+
+
+#Use same step for Minnesota
+co_fixna = analysis.loc[analysis['State'] == 'Minnesota' ]
+
+
+# use backfill to populate na values in the new dataframe 
+co_fixna.fillna(method='bfill', inplace=True)
+
+# use the new dataframe to fill na values in the original 
+analysis = analysis.fillna(co_fixna)
+
+
+
+#Use same step for Oklahoma
+co_fixna = analysis.loc[analysis['State'] == 'Oklahoma' ]
+
+
+# use backfill to populate na values in the new dataframe
+co_fixna.fillna(method='bfill', inplace=True)
+
+# use the new dataframe to fill na values in the original 
+analysis = analysis.fillna(co_fixna)
+
+
+#Use same steph for New Mexico
+co_fixna = analysis.loc[analysis['State'] == 'New Mexico' ]
+
+
+# use backfill to populate na values in the new dataframe 
+co_fixna.fillna(method='bfill', inplace=True)
+
+# use the new dataframe to fill na values in the original 
+analysis = analysis.fillna(co_fixna)
+
+
+
+# get a new dataframe with only values for Georgia to use to fill na values in original
+la_fixna = analysis.loc[analysis['State'] == 'Georgia' ]
+
+# drop all of the columns except for divorce rate 
+la_fixna.drop(['divorce_rate', 'Year'], axis=1, inplace=True)
+
+# get the mean Divorce Rate for a subset of data containing only Iowa and Ohio
+mean_div = analysis['divorce_rate'].loc[analysis['State'].isin(['Ohio', 'Iowa'])].mean()
+
+# set all of the Divorce rates in la_fixna to be the mean of both Iowa & Ohio
+la_fixna['divorce_rate'] = mean_div
+
+# fill the na Louisiana Divorce Rates with the values from la_fixna 
+analysis.fillna(la_fixna, inplace=True)
+
+
+#Use same step for California
+la_fixna = analysis.loc[analysis['State'] == 'California' ]
+
+# drop all of the columns except for divorce rate 
+la_fixna.drop(['divorce_rate', 'Year'], axis=1, inplace=True)
+
+# get the mean Divorce Rate for a subset of data containing only Iowa and Ohio
+mean_div = analysis['divorce_rate'].loc[analysis['State'].isin(['Ohio', 'Iowa'])].mean()
+
+# set all of the Divorce rates in la_fixna to be the mean of both Iowa & Ohio
+la_fixna['divorce_rate'] = mean_div
+
+# fill the na Louisiana Divorce Rates with the values from la_fixna 
+analysis.fillna(la_fixna, inplace=True)
+
+
+#Use same step for Hawaii
+la_fixna = analysis.loc[analysis['State'] == 'Hawaii' ]
+
+# drop all of the columns except for divorce rate 
+la_fixna.drop(['divorce_rate', 'Year'], axis=1, inplace=True)
+
+# get the mean Divorce Rate for a subset of data containing only Iowa and Ohio
+mean_div = analysis['divorce_rate'].loc[analysis['State'].isin(['Ohio', 'Iowa'])].mean()
+
+# set all of the Divorce rates in la_fixna to be the mean of both Iowa & Ohio
+la_fixna['divorce_rate'] = mean_div
+
+# fill the na Louisiana Divorce Rates with the values from la_fixna 
+analysis.fillna(la_fixna, inplace=True)
+
+#Use same step for Indiana
+la_fixna = analysis.loc[analysis['State'] == 'Indiana' ]
+
+# drop all of the columns except for divorce rate
+la_fixna.drop(['divorce_rate', 'Year'], axis=1, inplace=True)
+
+# get the mean Divorce Rate for a subset of data containing only Iowa and Ohio
+mean_div = analysis['divorce_rate'].loc[analysis['State'].isin(['Ohio', 'Iowa'])].mean()
+
+# set all of the Divorce rates in la_fixna to be the mean of both Iowa & Ohio
+la_fixna['divorce_rate'] = mean_div
+
+# fill the na Louisiana Divorce Rates with the values from la_fixna 
+analysis.fillna(la_fixna, inplace=True)
+
+
+#Use same step for Louisiana
+la_fixna = analysis.loc[analysis['State'] == 'Louisiana' ]
+
+# drop all of the columns except for divorce rate 
+la_fixna.drop(['divorce_rate', 'Year'], axis=1, inplace=True)
+
+# get the mean Divorce Rate for a subset of data containing only Iowa and Ohio
+mean_div = analysis['divorce_rate'].loc[analysis['State'].isin(['Ohio', 'Iowa'])].mean()
+
+# set all of the Divorce rates in la_fixna to be the mean of both Iowa & Ohio
+la_fixna['divorce_rate'] = mean_div
+
+# fill the na Louisiana Divorce Rates with the values from la_fixna 
+analysis.fillna(la_fixna, inplace=True)
+
+
+#Fill some na values with mean
+analysis.fillna(analysis.mean())
+
+#Export as csv file
+analysis.to_csv('divorce_imputation.csv', index=False, na_rep='null')
